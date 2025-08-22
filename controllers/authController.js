@@ -1,3 +1,5 @@
+// controllers/authController.js
+
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
@@ -6,7 +8,7 @@ const fs = require('fs');
 
 const AVATARS_DIR = path.join(__dirname, '..', 'avatars');
 
-// --- Register Logic ---
+// --- Register Logic 
 exports.register = async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -28,7 +30,7 @@ exports.register = async (req, res) => {
     }
 };
 
-// --- Login Logic ---
+// --- Login Logic---
 exports.login = async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -40,6 +42,7 @@ exports.login = async (req, res) => {
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid credentials.' });
         }
+
         const payload = {
             user: {
                 id: user.id,
@@ -68,7 +71,7 @@ exports.getProfile = async (req, res) => {
         res.json({
             username: user.username,
             balance: user.balance,
-            avatarUrl: user.avatarUrl,
+            avatarFileName: user.avatarFileName,
         });
     } catch (error) {
         console.error('Get profile error:', error);
@@ -81,7 +84,6 @@ exports.setAvatar = async (req, res) => {
     try {
         const { avatarFileName } = req.body;
         const userId = req.user.id; 
-
         const avatarPath = path.join(AVATARS_DIR, avatarFileName);
         if (!fs.existsSync(avatarPath)) {
             return res.status(400).json({ message: 'Invalid avatar selected.' });
@@ -92,12 +94,13 @@ exports.setAvatar = async (req, res) => {
             return res.status(404).json({ message: 'User not found.' });
         }
 
-        user.avatarUrl = `/avatars/${avatarFileName}`;
+        
+        user.avatarFileName = avatarFileName;
         await user.save();
 
         res.status(200).json({ 
             message: 'Avatar updated successfully!', 
-            avatarUrl: user.avatarUrl 
+            avatarFileName: user.avatarFileName 
         });
 
     } catch (error) {

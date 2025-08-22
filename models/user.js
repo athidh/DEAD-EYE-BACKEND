@@ -1,3 +1,5 @@
+// models/user.js
+
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
@@ -15,10 +17,12 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 1000
     },
-    avatarUrl: {
+    // Changed the field name to reflect that it's a file name
+    avatarFileName: {
         type: String,
-        default: 'https://placehold.co/150x150/A0522D/FFF8E7?text=Outlaw'
+        // Set a default filename. This assumes 'outlaw.jpg' exists in your avatars folder.
+        default: 'outlaw.jpg'
     }
 });
 
-module.exports = mongoose.model('user', userSchema);
+module.exports = mongoose.model('User', userSchema);

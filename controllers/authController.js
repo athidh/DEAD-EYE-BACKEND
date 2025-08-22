@@ -5,31 +5,6 @@ const User = require('../models/user');
 //register logic here
 exports.register = async (req, res) => {
     try {
-        // Destructure avatarUrl from the request body
-        const { username, password, avatarUrl } = req.body;
-        const existingUser = await User.findOne({ username });
-        if (existingUser) {
-            return res.status(400).json({ message: 'Username already taken.' });
-        }
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-        const newUser = new User({
-            username,
-            password: hashedPassword,
-            // Save the selected avatarUrl
-            avatarUrl: avatarUrl
-        });
-        await newUser.save();
-        res.status(201).json({ message: 'User registered successfully!' });
-    } catch (error) {
-        console.error('Registration error:', error);
-        res.status(500).json({ message: 'Server error during registration.' });
-    }
-};
-
-//register logic here
-exports.register = async (req, res) => {
-    try {
         const { username, password } = req.body;
         const existingUser = await User.findOne({ username });
         if (existingUser) {

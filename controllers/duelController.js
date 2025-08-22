@@ -127,3 +127,42 @@ exports.getCurrentDuel = async (req, res) => {
         res.status(500).json({ message: 'Server error.' });
     }
 };
+
+exports.handleGameResult = async (req, res) => {
+    try {
+        const { winner, scores, duelId } = req.body;
+        const io = req.app.get('socketio');
+
+        // Find the duel and update scores
+        const duel = await Duel.findById(duelId);
+        if (!duel) {
+            return res.status(404).json({ message: 'Duel not found.' });
+        }
+
+        duel.scores.player1 = scores.player1;
+        duel.scores.player2 = scores.player2;
+
+        // Optional: Check for game end and trigger payouts
+        if (duel.scores.player1 >= 3 || duel.scores.player2 >= 3) {
+            duel.status = 'finished';
+            duel.winner = winner;
+            // Add your wager payout logic here
+        }
+
+        await duel.save();
+
+        // Broadcast the real-time update to all dashboards
+        io.emit('score-update', {
+            duelId: duel._id,
+            scores: duel.scores,
+            winner: duel.winner,
+            status: duel.status
+        });
+
+        res.status(200).json({ message: 'Game state updated successfully.' });
+
+    } catch (error) {
+        console.error('Game result handling error:', error);
+        res.status(500).json({ message: 'Server error.' });
+    }
+};

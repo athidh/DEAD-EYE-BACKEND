@@ -1,0 +1,129 @@
+const Duel = require('../models/duel');
+const User = require('../models/user');
+
+const getIo = (req) => {
+    return req.app.get('socketio');
+};
+
+// Logic to start a new duel 
+exports.startDuel = async (req, res) => {
+    try {
+        const { player1, player2 } = req.body;
+        const io = getIo(req);
+        const newDuel = new Duel({ player1, player2 });
+        await newDuel.save();
+
+        io.emit('new-duel', {
+            duelId: newDuel._id,
+            player1: newDuel.player1,
+            player2: newDuel.player2,
+            scores: newDuel.scores,
+            status: newDuel.status
+        });
+
+        res.status(201).json({ message: 'Duel started successfully!', duel: newDuel });
+    } catch (error) {
+        console.error('Start duel error:', error);
+        res.status(500).json({ message: 'Server error starting duel.' });
+    }
+};
+
+// Logic for a user to place a wager 
+exports.placeWager = async (req, res) => {
+    try {
+        const { duelId, amount, betOnPlayer } = req.body;
+        const userId = req.user.id; 
+        const io = getIo(req);
+
+        const duel = await Duel.findById(duelId);
+        const user = await User.findById(userId);
+
+        if (!duel || !user) {
+            return res.status(404).json({ message: 'Duel or user not found.' });
+        }
+        if (duel.status !== 'pending') {
+            return res.status(400).json({ message: 'Wagers are closed for this duel.' });
+        }
+        if (user.balance < amount) {
+            return res.status(400).json({ message: 'Insufficient balance.' });
+        }
+        user.balance -= amount;
+        duel.wagers.push({ userId, amount, betOnPlayer });
+
+        await user.save();
+        await duel.save();
+
+        io.emit('new-wager', {
+            user: user.username,
+            amount,
+            betOnPlayer
+        });
+
+        res.status(200).json({ message: 'Wager placed successfully!', newBalance: user.balance });
+    } catch (error) {
+        console.error('Place wager error:', error);
+        res.status(500).json({ message: 'Server error placing wager.' });
+    }
+};
+
+// --- Logic to end a round and determine the winner ---
+exports.endRound = async (req, res) => {
+    try {
+        const { duelId, winner } = req.body; // winner could be 'player1' or 'player2'
+        const io = getIo(req);
+        const duel = await Duel.findById(duelId);
+        if (!duel) {
+            return res.status(404).json({ message: 'Duel not found.' });
+        }
+
+        if (winner === 'player1') {
+            duel.scores.player1 += 1;
+        } else if (winner === 'player2') {
+            duel.scores.player2 += 1;
+        }
+        duel.status = 'finished'; 
+        duel.winner = winner;
+        await duel.save();
+
+        const winnings = {};
+        for (const wager of duel.wagers) {
+            const user = await User.findById(wager.userId);
+            if (!user) continue;
+
+            if (wager.betOnPlayer === winner) {
+                const payout = wager.amount * 2; 
+                user.balance += payout;
+                winnings[user.username] = payout;
+            } else {
+                winnings[user.username] = 0; 
+            }
+            await user.save();
+        }
+
+        
+        io.emit('round-ended', {
+            duelId,
+            winner,
+            scores: duel.scores,
+            winnings
+        });
+
+        res.status(200).json({ message: 'Round ended successfully!', scores: duel.scores, winner });
+    } catch (error) {
+        console.error('End round error:', error);
+        res.status(500).json({ message: 'Server error ending round.' });
+    }
+};
+
+// --- Logic to get the current duel state ---
+exports.getCurrentDuel = async (req, res) => {
+    try {
+        const currentDuel = await Duel.findOne({ status: { $ne: 'finished' } }).sort({ createdAt: -1 });
+        if (!currentDuel) {
+            return res.status(404).json({ message: 'No active duel found.' });
+        }
+        res.status(200).json(currentDuel);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error.' });
+    }
+};

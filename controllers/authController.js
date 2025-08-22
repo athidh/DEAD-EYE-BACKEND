@@ -1,6 +1,8 @@
 // const bcrypt = require('bcrypt'); // bcrypt is no longer needed
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+const path = require('path');
+const fs = require('fs');
 
 // --- UPDATED Register Logic ---
 exports.register = async (req, res) => {
@@ -22,6 +24,7 @@ exports.register = async (req, res) => {
 
         await newUser.save();
         res.status(201).json({ message: 'User registered successfully!' });
+
     } catch (error) {
         console.error('Registration error:', error);
         res.status(500).json({ message: 'Server error during registration.' });
@@ -69,9 +72,43 @@ exports.getProfile = async (req, res) => {
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
-        res.json(user);
+        res.json({
+            username: user.username,
+            balance: user.balance,
+            avatarFileName: user.avatarFileName,
+        });
     } catch (error) {
         console.error('Get profile error:', error);
         res.status(500).json({ message: 'Server error.' });
+    }
+};
+
+// --- Set Avatar Logic ---
+exports.setAvatar = async (req, res) => {
+    try {
+        const { avatarFileName } = req.body;
+        const userId = req.user.id; 
+        const avatarPath = path.join(AVATARS_DIR, avatarFileName);
+        if (!fs.existsSync(avatarPath)) {
+            return res.status(400).json({ message: 'Invalid avatar selected.' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        
+        user.avatarFileName = avatarFileName;
+        await user.save();
+
+        res.status(200).json({ 
+            message: 'Avatar updated successfully!', 
+            avatarFileName: user.avatarFileName 
+        });
+
+    } catch (error) {
+        console.error('Set avatar error:', error);
+        res.status(500).json({ message: 'Server error setting avatar.' });
     }
 };

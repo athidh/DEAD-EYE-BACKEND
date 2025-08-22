@@ -2,13 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
+const cors = require('cors'); // Import cors
 const app = express();
 
-const MONGODB_URI = process.env.MONGODB_URI; 
+const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
     console.error(' Error: MONGODB_URI is not defined in the .env file. Please create a .env file in the root directory and add MONGODB_URI=YOUR_ATLAS_URI');
-    process.exit(1); 
+    process.exit(1);
 }
 
 mongoose.connect(MONGODB_URI, {
@@ -19,11 +20,11 @@ mongoose.connect(MONGODB_URI, {
 .catch(err => console.error(' MongoDB Atlas connection error:', err));
 
 // --- Middleware ---
+app.use(cors()); // Use cors middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 const authRoutes = require('./routes/auth');
 const duelRoutes = require('./routes/duel');
-
 
 app.use('/auth', authRoutes);
 

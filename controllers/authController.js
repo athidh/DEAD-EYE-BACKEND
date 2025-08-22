@@ -2,7 +2,6 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 
-
 //register logic here
 exports.register = async (req, res) => {
     try {
@@ -24,7 +23,8 @@ exports.register = async (req, res) => {
         res.status(500).json({ message: 'Server error during registration.' });
     }
 };
-//login logic hereee 
+
+//login logic hereee
 exports.login = async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -38,7 +38,7 @@ exports.login = async (req, res) => {
         }
         const payload = {
             user: {
-                id: user.id, 
+                id: user.id,
             },
         };
 
@@ -51,5 +51,20 @@ exports.login = async (req, res) => {
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ message: 'Server error during login.' });
+    }
+};
+
+// --- NEW: Get User Profile ---
+exports.getProfile = async (req, res) => {
+    try {
+        // req.user.id is attached by the authMiddleware
+        const user = await User.findById(req.user.id).select('-password'); // Exclude password from result
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+        res.json(user);
+    } catch (error) {
+        console.error('Get profile error:', error);
+        res.status(500).json({ message: 'Server error.' });
     }
 };

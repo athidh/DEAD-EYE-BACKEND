@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
-const cors = require('cors'); // Import cors
+const cors = require('cors');
 const app = express();
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -20,9 +20,11 @@ mongoose.connect(MONGODB_URI, {
 .catch(err => console.error(' MongoDB Atlas connection error:', err));
 
 // --- Middleware ---
-app.use(cors()); // Use cors middleware
+app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+
 const authRoutes = require('./routes/auth');
 const duelRoutes = require('./routes/duel');
 

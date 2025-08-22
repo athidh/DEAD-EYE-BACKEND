@@ -142,16 +142,16 @@ exports.handleGameResult = async (req, res) => {
         duel.scores.player1 = scores.player1;
         duel.scores.player2 = scores.player2;
 
-        // Optional: Check for game end and trigger payouts
+        // payout futureee prooff
         if (duel.scores.player1 >= 3 || duel.scores.player2 >= 3) {
             duel.status = 'finished';
             duel.winner = winner;
-            // Add your wager payout logic here
+
         }
 
         await duel.save();
 
-        // Broadcast the real-time update to all dashboards
+        // irl update brodacastingg
         io.emit('score-update', {
             duelId: duel._id,
             scores: duel.scores,

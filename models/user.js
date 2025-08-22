@@ -15,10 +15,8 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 1000
     },
-    // --- NEW FIELD ---
     avatarUrl: {
         type: String,
-        // Provide a default avatar in case one isn't selected
         default: 'https://placehold.co/150x150/A0522D/FFF8E7?text=Outlaw'
     }
 });

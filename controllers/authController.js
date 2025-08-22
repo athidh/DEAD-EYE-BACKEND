@@ -1,21 +1,25 @@
-const bcrypt = require('bcrypt');
+// const bcrypt = require('bcrypt'); // bcrypt is no longer needed
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 
-//register logic here
+// --- UPDATED Register Logic ---
 exports.register = async (req, res) => {
     try {
-        const { username, password } = req.body;
+        // Now accepts avatarUrl from the request body
+        const { username, password, avatarUrl } = req.body;
+
         const existingUser = await User.findOne({ username });
         if (existingUser) {
             return res.status(400).json({ message: 'Username already taken.' });
         }
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Hashing logic has been removed
         const newUser = new User({
             username,
-            password: hashedPassword,
+            password: password, // Stores the password directly
+            avatarUrl: avatarUrl, // Saves the avatar URL from the form
         });
+
         await newUser.save();
         res.status(201).json({ message: 'User registered successfully!' });
     } catch (error) {
@@ -24,7 +28,7 @@ exports.register = async (req, res) => {
     }
 };
 
-//login logic hereee
+// --- UPDATED Login Logic ---
 exports.login = async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -32,10 +36,14 @@ exports.login = async (req, res) => {
         if (!user) {
             return res.status(400).json({ message: 'Invalid credentials.' });
         }
-        const isMatch = await bcrypt.compare(password, user.password);
+
+        // Compares the plain text password directly
+        const isMatch = (password === user.password);
+
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid credentials.' });
         }
+
         const payload = {
             user: {
                 id: user.id,
@@ -54,11 +62,10 @@ exports.login = async (req, res) => {
     }
 };
 
-// --- NEW: Get User Profile ---
+// --- Get User Profile (No changes needed here) ---
 exports.getProfile = async (req, res) => {
     try {
-        // req.user.id is attached by the authMiddleware
-        const user = await User.findById(req.user.id).select('-password'); // Exclude password from result
+        const user = await User.findById(req.user.id).select('-password');
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }

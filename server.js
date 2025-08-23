@@ -2,11 +2,17 @@ const http = require('http');
 const socketIo = require('socket.io');
 const app = require('./app'); 
 
-
 const server = http.createServer(app);
 
-
-const io = socketIo(server);
+// --- UPDATED: Added CORS configuration for Socket.IO ---
+// This allows your frontend (running on a different origin) to establish
+// a real-time WebSocket connection with the server.
+const io = socketIo(server, {
+  cors: {
+    origin: "*", // Allows connections from any origin. For production, you might restrict this to your frontend's domain.
+    methods: ["GET", "POST"]
+  }
+});
 
 app.set('socketio', io);
 
@@ -19,9 +25,8 @@ io.on('connection', (socket) => {
 
     socket.on('place-wager', (wagerData) => {
         console.log('💰 Wager received:', wagerData);
-        io.emit('new-wager', wagerData); 
+        io.emit('new-wager', wagerData);
     });
-
 
 });
 

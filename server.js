@@ -1,34 +1,22 @@
 const http = require('http');
 const socketIo = require('socket.io');
 const app = require('./app'); 
+const initializeGameSocket = require('./gameSocket'); // Import the game logic
 
 const server = http.createServer(app);
 
-// --- UPDATED: Added CORS configuration for Socket.IO ---
-// This allows your frontend (running on a different origin) to establish
-// a real-time WebSocket connection with the server.
 const io = socketIo(server, {
   cors: {
-    origin: "*", // Allows connections from any origin. For production, you might restrict this to your frontend's domain.
+    origin: "*", 
     methods: ["GET", "POST"]
   }
 });
 
 app.set('socketio', io);
 
-io.on('connection', (socket) => {
-    console.log(`✨ A user connected: ${socket.id}`);
-
-    socket.on('disconnect', () => {
-        console.log(`👋 User disconnected: ${socket.id}`);
-    });
-
-    socket.on('place-wager', (wagerData) => {
-        console.log('💰 Wager received:', wagerData);
-        io.emit('new-wager', wagerData);
-    });
-
-});
+// Initialize all real-time game logic from the dedicated file.
+// The redundant connection handler has been removed from this file.
+initializeGameSocket(io);
 
 const PORT = process.env.PORT || 3000;
 

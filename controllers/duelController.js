@@ -99,7 +99,6 @@ exports.endRound = async (req, res) => {
             }
             await user.save();
         }
-
         
         io.emit('round-ended', {
             duelId,
@@ -115,15 +114,23 @@ exports.endRound = async (req, res) => {
     }
 };
 
-// --- Logic to get the current duel state ---
+// --- UPDATED: Logic to get ALL current duels ---
 exports.getCurrentDuel = async (req, res) => {
     try {
-        const currentDuel = await Duel.findOne({ status: { $ne: 'finished' } }).sort({ createdAt: -1 });
-        if (!currentDuel) {
-            return res.status(404).json({ message: 'No active duel found.' });
+        // Use .find() to get all duels that are not 'finished'
+        const currentDuels = await Duel.find({
+            status: { $ne: 'finished' }
+        }).sort({ createdAt: -1 });
+
+        // If no duels are found, it's not an error; just return an empty array.
+        if (!currentDuels) {
+            return res.status(200).json([]);
         }
-        res.status(200).json(currentDuel);
+
+        res.status(200).json(currentDuels);
+
     } catch (error) {
+        console.error('Get current duels error:', error);
         res.status(500).json({ message: 'Server error.' });
     }
 };
@@ -142,16 +149,16 @@ exports.handleGameResult = async (req, res) => {
         duel.scores.player1 = scores.player1;
         duel.scores.player2 = scores.player2;
 
-        // payout futureee prooff
+        // Optional: Check for game end and trigger payouts
         if (duel.scores.player1 >= 3 || duel.scores.player2 >= 3) {
             duel.status = 'finished';
             duel.winner = winner;
-
+            // Add your wager payout logic here
         }
 
         await duel.save();
 
-        // irl update brodacastingg
+        // Broadcast the real-time update to all dashboards
         io.emit('score-update', {
             duelId: duel._id,
             scores: duel.scores,
@@ -161,7 +168,8 @@ exports.handleGameResult = async (req, res) => {
 
         res.status(200).json({ message: 'Game state updated successfully.' });
 
-    } catch (error) {
+    } catch (error)
+        {
         console.error('Game result handling error:', error);
         res.status(500).json({ message: 'Server error.' });
     }

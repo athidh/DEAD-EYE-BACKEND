@@ -21,6 +21,7 @@ function initializeGameSocket(io) {
         console.log(`✨ A user connected: ${socket.id}`);
 
         socket.on('find-match', async (userId) => {
+            // ADDED: Validation to ensure a valid userId is provided
             if (!userId) {
                 console.log(`[Validation Error] Socket ${socket.id} tried to find a match without a userId.`);
                 return;
@@ -73,22 +74,29 @@ function initializeGameSocket(io) {
 
         socket.on('make-move', (data) => {
             const { roomId, userId, move } = data;
+            console.log(`[Game ${roomId}] Move received from User ${userId}: ${move}`);
             const game = activeGames[roomId];
-            if (!game) return;
+            if (!game) {
+                console.log(`[Game ${roomId}] Received move for a non-existent game.`);
+                return;
+            }
 
             const isPlayer1 = game.player1.userId.toString() === userId;
-            if (isPlayer1) game.player1.move = move;
-            else game.player2.move = move;
+            if (isPlayer1) {
+                game.player1.move = move;
+                console.log(`[Game ${roomId}] Player 1 (${game.player1.username}) chose ${move}`);
+            } else {
+                game.player2.move = move;
+                console.log(`[Game ${roomId}] Player 2 (${game.player2.username}) chose ${move}`);
+            }
 
             if (game.player1.move && game.player2.move) {
+                console.log(`[Game ${roomId}] Both players have moved. Processing result...`);
                 const winner = getRoundWinner(game.player1.move, game.player2.move);
                 if (winner === 'player1') game.scores.player1++;
                 else if (winner === 'player2') game.scores.player2++;
 
-                // --- THE FIX: Changed io.to(roomId).emit to io.emit ---
-                // This broadcasts the result to EVERYONE, including spectators.
-                io.emit('round-result', {
-                    duelId: roomId, // Pass the duelId so the frontend knows which card to update
+                io.to(roomId).emit('round-result', {
                     winner: winner,
                     moves: { player1: game.player1.move, player2: game.player2.move },
                     scores: game.scores
@@ -99,20 +107,14 @@ function initializeGameSocket(io) {
 
                 if (game.scores.player1 >= 3 || game.scores.player2 >= 3) {
                     const gameWinner = game.scores.player1 >= 3 ? game.player1.username : game.player2.username;
-                    
-                    // --- THE FIX: Changed io.to(roomId).emit to io.emit ---
-                    // This broadcasts the final result to EVERYONE.
-                    io.emit('game-over', {
-                        duelId: roomId, // Pass the duelId
-                        winner: gameWinner
-                    });
+                    io.to(roomId).emit('game-over', { winner: gameWinner });
 
                     Duel.findByIdAndUpdate(roomId, {
                         status: 'finished',
                         winner: gameWinner,
                         scores: game.scores
                     }).then(() => {
-                        console.log(`[Game ${roomId}] Game finished. Winner: ${gameWinner}.`);
+                        console.log(`[Game ${roomId}] Game finished. Winner: ${gameWinner}. Deleting from active games.`);
                         delete activeGames[roomId];
                     }).catch(err => console.error(err));
                 }
@@ -125,11 +127,17 @@ function initializeGameSocket(io) {
 
             let gameToEnd = null;
             let remainingPlayerSocketId = null;
+
             for (const roomId in activeGames) {
                 const game = activeGames[roomId];
-                if (game.player1.socketId === socket.id || game.player2.socketId === socket.id) {
+                if (game.player1.socketId === socket.id) {
                     gameToEnd = roomId;
-                    remainingPlayerSocketId = game.player1.socketId === socket.id ? game.player2.socketId : game.player1.socketId;
+                    remainingPlayerSocketId = game.player2.socketId;
+                    break;
+                }
+                if (game.player2.socketId === socket.id) {
+                    gameToEnd = roomId;
+                    remainingPlayerSocketId = game.player1.socketId;
                     break;
                 }
             }
@@ -137,7 +145,7 @@ function initializeGameSocket(io) {
             if (gameToEnd && remainingPlayerSocketId) {
                 console.log(`[Game ${gameToEnd}] A player disconnected. Notifying opponent.`);
                 io.to(remainingPlayerSocketId).emit('opponent-disconnected');
-                delete activeGames[gameToEnd];
+                delete activeGames[gameToEnd]; // Clean up the game
             }
         });
     });
